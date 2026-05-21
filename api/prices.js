@@ -14,17 +14,16 @@ export default async function handler(req, res) {
     );
     const data = await r.json();
 
-    // Verificar si hay error de créditos agotados
-    const isMulti = symbols.includes(',');
-    const firstVal = isMulti ? Object.values(data)[0] : data;
-    const hasCreditsError = firstVal?.code === 429 || firstVal?.status === 'error';
+    // Detectar error 429 en cualquier posición
+    const isError = data?.code === 429 || data?.status === 'error' ||
+      Object.values(data).some(v => v?.code === 429 || v?.status === 'error');
 
-    if (!hasCreditsError) {
+    if (!isError) {
       return res.json({ source: 'twelvedata', data });
     }
   } catch {}
 
-  // Fallback: Stooq (EOD, sin límite)
+  // Fallback: Stooq (EOD, sin límite, sin key)
   const symbolList = symbols.split(',');
   const result = {};
 
@@ -38,7 +37,6 @@ export default async function handler(req, res) {
       const cols = lines[1].split(',');
       const close = parseFloat(cols[6]);
       const open  = parseFloat(cols[3]);
-      const prev  = parseFloat(cols[5]); // Low como referencia si no hay prev close
       if (!close || isNaN(close)) return;
       const change = open ? ((close - open) / open) * 100 : 0;
       result[sym] = { close: String(close), previous_close: String(open), change };
