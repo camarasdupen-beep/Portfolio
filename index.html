@@ -169,6 +169,9 @@ function SetupScreen({ onSave }) {
 function App() {
   const [apiKey,    setApiKey]    = useState(() => localStorage.getItem("td_key") || "");
   const [nominales, setNominales] = useState(() => { try { return JSON.parse(localStorage.getItem("nominales")||"{}"); } catch { return {}; }});
+  const [targets,   setTargets]   = useState(() => { try { return JSON.parse(localStorage.getItem("targets")||"{}"); } catch { return {}; }});
+  const [editingTarget, setEditingTarget] = useState(null);
+  const [editTargetVal, setEditTargetVal] = useState("");
   const [prices,    setPrices]    = useState({});
   const [ccl,       setCcl]       = useState(null);
   const [loading,   setLoading]   = useState(false);
@@ -182,6 +185,7 @@ function App() {
   const saveKey = k => { localStorage.setItem("td_key", k); setApiKey(k); };
 
   useEffect(() => { localStorage.setItem("nominales", JSON.stringify(nominales)); }, [nominales]);
+  useEffect(() => { localStorage.setItem("targets", JSON.stringify(targets)); }, [targets]);
 
   const fetchAll = useCallback(async () => {
     if (!apiKey) return;
@@ -267,6 +271,14 @@ function App() {
     setEditing(null);
   };
 
+  const saveTarget = ticker => {
+    const v = parseFloat(editTargetVal);
+    if (!isNaN(v) && v >= 0 && v <= 100) setTargets(p=>({...p,[ticker]:v}));
+    setEditingTarget(null);
+  };
+
+  const totalTarget = Object.values(targets).reduce((s,v)=>s+(v||0),0);
+
   return (
     <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
 
@@ -341,8 +353,8 @@ function App() {
         )}
 
         {/* ── TABLE HEADER ── */}
-        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1.2fr",gap:0,padding:"8px 16px",marginBottom:4}}>
-          {["Instrumento","Precio USD","Var. día","Cantidad","Valor USD","Cartera"].map(h=>(
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr 1.4fr",gap:0,padding:"8px 16px",marginBottom:4}}>
+          {["Instrumento","Precio USD","Var. día","Cantidad","Valor USD","Target %","Asignación"].map(h=>(
             <div key={h} style={{fontSize:11,fontWeight:600,color:"var(--text3)",letterSpacing:.5,textTransform:"uppercase",textAlign:h==="Instrumento"?"left":"right"}}>{h}</div>
           ))}
         </div>
@@ -366,7 +378,7 @@ function App() {
                 borderRadius:8,
                 padding:"14px 16px",
                 display:"grid",
-                gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1.2fr",
+                gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1fr 1.4fr",
                 alignItems:"center",
                 gap:0,
                 position:"relative",
@@ -461,18 +473,66 @@ function App() {
                   )}
                 </div>
 
-                {/* ── col 6: weight ── */}
-                <div style={{textAlign:"right",paddingLeft:8}}>
-                  {weight>0 ? (
-                    <>
-                      <div style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:600,color:"var(--text2)"}}>{weight.toFixed(1)}%</div>
-                      <div style={{marginTop:5,height:4,background:"var(--bg3)",borderRadius:4,overflow:"hidden"}}>
-                        <div style={{width:`${Math.min(weight,100)}%`,height:"100%",background:"rgba(63,185,80,.6)",borderRadius:4,transition:"width .6s ease"}} />
-                      </div>
-                    </>
+                {/* ── col 6: target % editable ── */}
+                <div style={{textAlign:"right"}}>
+                  {editingTarget===ticker ? (
+                    <div style={{display:"flex",gap:4,justifyContent:"flex-end",alignItems:"center"}}>
+                      <input autoFocus type="number" min="0" max="100" value={editTargetVal}
+                        onChange={e=>setEditTargetVal(e.target.value)}
+                        onKeyDown={e=>{ if(e.key==="Enter") saveTarget(ticker); if(e.key==="Escape") setEditingTarget(null); }}
+                        style={{width:52,background:"var(--bg)",border:"1px solid var(--gold)",color:"var(--text)",padding:"4px 6px",fontSize:12,borderRadius:5,fontFamily:"var(--mono)",textAlign:"right"}}
+                      />
+                      <span style={{fontSize:11,color:"var(--text3)"}}>%</span>
+                      <button onClick={()=>saveTarget(ticker)}
+                        style={{background:"var(--gold)",border:"none",color:"#000",padding:"4px 7px",fontSize:11,fontWeight:700,borderRadius:5,cursor:"pointer"}}>✓</button>
+                    </div>
                   ) : (
-                    <span style={{fontSize:12,color:"var(--text3)"}}>—</span>
+                    <div className="editable" onClick={()=>{ setEditingTarget(ticker); setEditTargetVal(targets[ticker]!=null?String(targets[ticker]):""); }}
+                      style={{cursor:"pointer",fontFamily:"var(--mono)",fontSize:13,fontWeight:600,
+                        color:targets[ticker]!=null?"var(--gold)":"var(--text3)",
+                        border:"1px solid transparent",borderRadius:5,padding:"3px 8px",display:"inline-block"}}
+                      title="Click para editar target">
+                      {targets[ticker]!=null ? `${targets[ticker]}%` : <span style={{fontSize:11,color:"var(--text3)"}}>— %</span>}
+                    </div>
                   )}
+                  {totalTarget>0 && totalTarget!==100 && targets[ticker]!=null && (
+                    <div style={{fontSize:9,color:"var(--text3)",marginTop:2}}>
+                      total: {totalTarget.toFixed(0)}%
+                    </div>
+                  )}
+                </div>
+
+                {/* ── col 7: current allocation + gap ── */}
+                <div style={{textAlign:"right",paddingLeft:8}}>
+                  {weight>0 || targets[ticker]!=null ? (() => {
+                    const tgt = targets[ticker] ?? null;
+                    const gap = tgt!=null ? weight - tgt : null;
+                    const gapColor = gap==null ? "var(--text3)" : Math.abs(gap)<1 ? "var(--green)" : gap>0 ? "#f8a050" : "var(--blue)";
+                    return (
+                      <>
+                        {/* allocation bar: actual vs target */}
+                        <div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:3}}>
+                          <div style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:600,color:"var(--text2)"}}>
+                            {weight.toFixed(1)}%
+                          </div>
+                        </div>
+                        <div style={{position:"relative",height:5,background:"var(--bg3)",borderRadius:4,overflow:"visible",width:"100%",marginBottom:3}}>
+                          {/* target marker */}
+                          {tgt!=null && tgt>0 && (
+                            <div style={{position:"absolute",top:-2,left:`${Math.min(tgt,100)}%`,width:2,height:9,background:"var(--gold)",borderRadius:1,transform:"translateX(-50%)",zIndex:2}} />
+                          )}
+                          {/* actual bar */}
+                          <div style={{width:`${Math.min(weight,100)}%`,height:"100%",background:gap==null?"rgba(63,185,80,.6)":gap>1?"rgba(248,160,80,.7)":gap<-1?"rgba(88,166,255,.7)":"rgba(63,185,80,.7)",borderRadius:4,transition:"width .6s ease"}} />
+                        </div>
+                        {/* gap label */}
+                        {gap!=null && (
+                          <div style={{fontFamily:"var(--mono)",fontSize:11,fontWeight:600,color:gapColor}}>
+                            {gap>0.05?`+${gap.toFixed(1)}%`:gap<-0.05?`${gap.toFixed(1)}%`:"✓ en target"}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })() : <span style={{fontSize:12,color:"var(--text3)"}}>—</span>}
                 </div>
 
               </div>
