@@ -79,15 +79,17 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback } = React;
 
+// Ratios oficiales verificados — fuentes: Caja de Valores, BYMA, Comafi
+// SPY 20:1 · ACWI 26:1 · SMH 50:1 · GLD 50:1 · GDX 10:1 · XLE 2:1 · IEMG 12:1
 const CARTERA = [
-  { ticker: "SPY",  name: "SPDR S&P 500 ETF",        ratio: 30,  sector: "US Broad", type: "cedear" },
-  { ticker: "ACWI", name: "iShares MSCI ACWI ETF",    ratio: 11,  sector: "Global",   type: "cedear" },
-  { ticker: "SMH",  name: "VanEck Semiconductor ETF", ratio: 35,  sector: "Tech",     type: "cedear" },
-  { ticker: "GLD",  name: "SPDR Gold Shares",          ratio: 10,  sector: "Commodit", type: "cedear" },
-  { ticker: "GDX",  name: "VanEck Gold Miners ETF",   ratio: 10,  sector: "Commodit", type: "cedear" },
-  { ticker: "XLE",  name: "Energy Select Sector SPDR",ratio: 10,  sector: "Energy",   type: "cedear" },
-  { ticker: "IEMG", name: "iShares Core MSCI EM ETF", ratio: 5,   sector: "EM",       type: "cedear" },
-  { ticker: "BTC/USD", name: "Bitcoin",               ratio: 1,   sector: "Crypto",   type: "crypto" },
+  { ticker: "SPY",     name: "SPDR S&P 500 ETF",         ratio: 20,  sector: "US Broad", type: "cedear" },
+  { ticker: "ACWI",    name: "iShares MSCI ACWI ETF",     ratio: 26,  sector: "Global",   type: "cedear" },
+  { ticker: "SMH",     name: "VanEck Semiconductor ETF",  ratio: 50,  sector: "Tech",     type: "cedear" },
+  { ticker: "GLD",     name: "SPDR Gold Shares",           ratio: 50,  sector: "Commodit", type: "cedear" },
+  { ticker: "GDX",     name: "VanEck Gold Miners ETF",    ratio: 10,  sector: "Commodit", type: "cedear" },
+  { ticker: "XLE",     name: "Energy Select Sector SPDR", ratio: 2,   sector: "Energy",   type: "cedear" },
+  { ticker: "IEMG",    name: "iShares Core MSCI EM ETF",  ratio: 12,  sector: "EM",       type: "cedear" },
+  { ticker: "BTC/USD", name: "Bitcoin",                   ratio: 1,   sector: "Crypto",   type: "crypto" },
 ];
 
 const SECTOR_COLOR = {
