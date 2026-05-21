@@ -3,18 +3,69 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CEDEAR Dashboard</title>
+  <title>Mi Cartera CEDEAR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #070b14; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --bg2:       #161b22;
+      --bg3:       #1c2230;
+      --border:    #21262d;
+      --border2:   #30363d;
+      --text:      #e6edf3;
+      --text2:     #8b949e;
+      --text3:     #484f58;
+      --green:     #3fb950;
+      --green-dim: #1a3a20;
+      --red:       #f85149;
+      --red-dim:   #3a1a1a;
+      --blue:      #58a6ff;
+      --gold:      #d29922;
+      --gold-bg:   #2a1f00;
+      --mono:      'JetBrains Mono', 'Courier New', monospace;
+      --sans:      'Inter', system-ui, sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    input, button { font-family: var(--sans); }
     input:focus { outline: none; }
-    button { font-family: 'Courier New', monospace; cursor: pointer; }
-    ::-webkit-scrollbar { width: 4px; }
-    ::-webkit-scrollbar-track { background: #070b14; }
-    ::-webkit-scrollbar-thumb { background: #1a2a4a; border-radius: 2px; }
+    a { color: var(--blue); }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+    .mono { font-family: var(--mono); }
+
+    /* ── ticker row hover ── */
+    .ticker-row { transition: background .12s; }
+    .ticker-row:hover { background: var(--bg3) !important; }
+
+    /* ── editable cell ── */
+    .editable { transition: border-color .15s, color .15s; }
+    .editable:hover { border-color: var(--border2) !important; color: var(--text) !important; }
+
+    /* ── pill badge ── */
+    .badge-up   { background: var(--green-dim); color: var(--green); }
+    .badge-down { background: var(--red-dim);   color: var(--red);   }
+
+    /* ── stat card ── */
+    .stat-card { transition: border-color .15s; }
+    .stat-card:hover { border-color: var(--border2); }
   </style>
 </head>
 <body>
@@ -22,113 +73,33 @@
 <script type="text/babel">
 const { useState, useEffect, useCallback } = React;
 
-const CEDEAR_DB = {
-  AAPL:  { ratio: 20,  name: "Apple",               emoji: "🍎", sector: "Tech" },
-  MSFT:  { ratio: 8,   name: "Microsoft",            emoji: "🪟", sector: "Tech" },
-  GOOGL: { ratio: 58,  name: "Alphabet",             emoji: "🔍", sector: "Tech" },
-  AMZN:  { ratio: 144, name: "Amazon",               emoji: "📦", sector: "Tech" },
-  META:  { ratio: 8,   name: "Meta",                 emoji: "👓", sector: "Tech" },
-  NVDA:  { ratio: 10,  name: "Nvidia",               emoji: "🎮", sector: "Tech" },
-  AMD:   { ratio: 10,  name: "AMD",                  emoji: "💻", sector: "Tech" },
-  INTC:  { ratio: 5,   name: "Intel",                emoji: "🔵", sector: "Tech" },
-  ADBE:  { ratio: 44,  name: "Adobe",                emoji: "🎨", sector: "Tech" },
-  AVGO:  { ratio: 39,  name: "Broadcom",             emoji: "📡", sector: "Tech" },
-  AMAT:  { ratio: 5,   name: "Applied Materials",    emoji: "⚙️", sector: "Tech" },
-  CSCO:  { ratio: 5,   name: "Cisco",                emoji: "🌐", sector: "Tech" },
-  IBM:   { ratio: 15,  name: "IBM",                  emoji: "🔷", sector: "Tech" },
-  ORCL:  { ratio: 15,  name: "Oracle",               emoji: "🔴", sector: "Tech" },
-  CRM:   { ratio: 40,  name: "Salesforce",           emoji: "☁️", sector: "Tech" },
-  ACN:   { ratio: 75,  name: "Accenture",            emoji: "📊", sector: "Tech" },
-  DOCU:  { ratio: 22,  name: "DocuSign",             emoji: "📄", sector: "Tech" },
-  ETSY:  { ratio: 16,  name: "Etsy",                 emoji: "🎀", sector: "Tech" },
-  COIN:  { ratio: 27,  name: "Coinbase",             emoji: "🪙", sector: "Tech" },
-  GLOB:  { ratio: 18,  name: "Globant",              emoji: "🌎", sector: "Tech" },
-  ARM:   { ratio: 27,  name: "ARM Holdings",         emoji: "🦾", sector: "Tech" },
-  ISRG:  { ratio: 90,  name: "Intuitive Surgical",   emoji: "🤖", sector: "Tech" },
-  TSLA:  { ratio: 5,   name: "Tesla",                emoji: "⚡", sector: "Auto" },
-  GM:    { ratio: 6,   name: "General Motors",       emoji: "🚗", sector: "Auto" },
-  HOG:   { ratio: 3,   name: "Harley-Davidson",      emoji: "🏍️", sector: "Auto" },
-  BA:    { ratio: 24,  name: "Boeing",               emoji: "✈️", sector: "Ind"  },
-  GE:    { ratio: 8,   name: "GE Aerospace",         emoji: "🛫", sector: "Ind"  },
-  DAL:   { ratio: 8,   name: "Delta Airlines",       emoji: "🛬", sector: "Ind"  },
-  AAL:   { ratio: 2,   name: "American Airlines",    emoji: "🛩️", sector: "Ind"  },
-  ERJ:   { ratio: 1,   name: "Embraer",              emoji: "🛸", sector: "Ind"  },
-  JPM:   { ratio: 20,  name: "JPMorgan",             emoji: "🏦", sector: "Fin"  },
-  BAC:   { ratio: 4,   name: "Bank of America",      emoji: "💰", sector: "Fin"  },
-  GS:    { ratio: 13,  name: "Goldman Sachs",        emoji: "💹", sector: "Fin"  },
-  AXP:   { ratio: 15,  name: "Amex",                 emoji: "💳", sector: "Fin"  },
-  C:     { ratio: 3,   name: "Citigroup",            emoji: "🌆", sector: "Fin"  },
-  AIG:   { ratio: 5,   name: "AIG",                  emoji: "🛡️", sector: "Fin"  },
-  SCHW:  { ratio: 13,  name: "Charles Schwab",       emoji: "📈", sector: "Fin"  },
-  BRKB:  { ratio: 22,  name: "Berkshire B",          emoji: "🎩", sector: "Fin"  },
-  SAN:   { ratio: 4,   name: "Santander",            emoji: "🏦", sector: "Fin",  ratioInverse: true },
-  WMT:   { ratio: 20,  name: "Walmart",              emoji: "🏪", sector: "Cons" },
-  COST:  { ratio: 48,  name: "Costco",               emoji: "🛒", sector: "Cons" },
-  HD:    { ratio: 32,  name: "Home Depot",           emoji: "🏠", sector: "Cons" },
-  MCD:   { ratio: 10,  name: "McDonald's",           emoji: "🍔", sector: "Cons" },
-  KO:    { ratio: 5,   name: "Coca-Cola",            emoji: "🥤", sector: "Cons" },
-  PEP:   { ratio: 15,  name: "PepsiCo",              emoji: "🥛", sector: "Cons" },
-  MO:    { ratio: 4,   name: "Altria",               emoji: "🚬", sector: "Cons" },
-  CL:    { ratio: 3,   name: "Colgate",              emoji: "🦷", sector: "Cons" },
-  JNJ:   { ratio: 15,  name: "Johnson & Johnson",    emoji: "💊", sector: "Hlth" },
-  PFE:   { ratio: 3,   name: "Pfizer",               emoji: "💉", sector: "Hlth" },
-  MRK:   { ratio: 10,  name: "Merck",                emoji: "🧬", sector: "Hlth" },
-  LLY:   { ratio: 56,  name: "Eli Lilly",            emoji: "🔬", sector: "Hlth" },
-  AMGN:  { ratio: 30,  name: "Amgen",                emoji: "🧪", sector: "Hlth" },
-  ABBV:  { ratio: 10,  name: "AbbVie",               emoji: "💊", sector: "Hlth" },
-  BMY:   { ratio: 3,   name: "Bristol-Myers",        emoji: "🏥", sector: "Hlth" },
-  GILD:  { ratio: 4,   name: "Gilead",               emoji: "💉", sector: "Hlth" },
-  AZN:   { ratio: 2,   name: "AstraZeneca",          emoji: "🔭", sector: "Hlth" },
-  GSK:   { ratio: 4,   name: "GSK",                  emoji: "🩺", sector: "Hlth" },
-  XOM:   { ratio: 10,  name: "ExxonMobil",           emoji: "🛢️", sector: "Enrg" },
-  CVX:   { ratio: 16,  name: "Chevron",              emoji: "⛽", sector: "Enrg" },
-  BP:    { ratio: 5,   name: "BP",                   emoji: "🌊", sector: "Enrg" },
-  HAL:   { ratio: 2,   name: "Halliburton",          emoji: "🔧", sector: "Enrg" },
-  BKR:   { ratio: 7,   name: "Baker Hughes",         emoji: "⛏️", sector: "Enrg" },
-  FSLR:  { ratio: 18,  name: "First Solar",          emoji: "☀️", sector: "Enrg" },
-  GOLD:  { ratio: 2,   name: "Barrick Gold",         emoji: "🥇", sector: "Mat"  },
-  AEM:   { ratio: 6,   name: "Agnico Eagle",         emoji: "⛏️", sector: "Mat"  },
-  FCX:   { ratio: 3,   name: "Freeport-McMoRan",     emoji: "🔩", sector: "Mat"  },
-  BHP:   { ratio: 2,   name: "BHP Group",            emoji: "⚒️", sector: "Mat"  },
-  DOW:   { ratio: 6,   name: "Dow Inc",              emoji: "🏭", sector: "Mat"  },
-  MELI:  { ratio: 3,   name: "MercadoLibre",         emoji: "🛍️", sector: "LATM" },
-  BABA:  { ratio: 9,   name: "Alibaba",              emoji: "🛒", sector: "LATM" },
-  DESP:  { ratio: 1,   name: "Despegar",             emoji: "✈️", sector: "LATM" },
-  BIOX:  { ratio: 1,   name: "Bioceres",             emoji: "🌱", sector: "LATM" },
-  CAAP:  { ratio: 4,   name: "Corp America Airports",emoji: "🏢", sector: "LATM", ratioInverse: true },
-  ARCO:  { ratio: 2,   name: "Arcos Dorados",        emoji: "🍟", sector: "LATM", ratioInverse: true },
-  ABEV:  { ratio: 3,   name: "Ambev",                emoji: "🍺", sector: "LATM", ratioInverse: true },
-  BRFS:  { ratio: 3,   name: "BRF",                  emoji: "🍗", sector: "LATM", ratioInverse: true },
-  GGB:   { ratio: 4,   name: "Gerdau",               emoji: "⚙️", sector: "LATM", ratioInverse: true },
-  SBS:   { ratio: 2,   name: "Sabesp",               emoji: "💧", sector: "LATM", ratioInverse: true },
-  SID:   { ratio: 8,   name: "CSN Siderúrgica",      emoji: "🔩", sector: "LATM", ratioInverse: true },
-  EBR:   { ratio: 4,   name: "Eletrobras",           emoji: "⚡", sector: "LATM", ratioInverse: true },
-  SPY:   { ratio: 30,  name: "S&P 500 ETF",          emoji: "📊", sector: "ETF"  },
-  QQQ:   { ratio: 35,  name: "Nasdaq 100 ETF",       emoji: "📈", sector: "ETF"  },
-  IBIT:  { ratio: 10,  name: "iShares Bitcoin",      emoji: "₿",  sector: "ETF"  },
-  FXI:   { ratio: 5,   name: "iShares China",        emoji: "🇨🇳", sector: "ETF"  },
-  IBB:   { ratio: 27,  name: "Nasdaq Biotech ETF",   emoji: "🔬", sector: "ETF"  },
-  DIS:   { ratio: 10,  name: "Disney",               emoji: "🏰", sector: "Med"  },
-  NFLX:  { ratio: 15,  name: "Netflix",              emoji: "🎬", sector: "Med"  },
-  BKNG:  { ratio: 700, name: "Booking Holdings",     emoji: "🏨", sector: "Med"  },
+const CARTERA = [
+  { ticker: "SPY",  name: "SPDR S&P 500 ETF",        ratio: 30,  sector: "US Broad" },
+  { ticker: "ACWI", name: "iShares MSCI ACWI ETF",    ratio: 11,  sector: "Global"   },
+  { ticker: "SMH",  name: "VanEck Semiconductor ETF", ratio: 35,  sector: "Tech"     },
+  { ticker: "GLD",  name: "SPDR Gold Shares",          ratio: 10,  sector: "Commodit" },
+  { ticker: "GDX",  name: "VanEck Gold Miners ETF",   ratio: 10,  sector: "Commodit" },
+  { ticker: "XLE",  name: "Energy Select Sector SPDR",ratio: 10,  sector: "Energy"   },
+  { ticker: "IEMG", name: "iShares Core MSCI EM ETF", ratio: 5,   sector: "EM"       },
+];
+
+const SECTOR_COLOR = {
+  "US Broad": "#58a6ff",
+  "Global":   "#a5d6ff",
+  "Tech":     "#d2a8ff",
+  "Commodit": "#d29922",
+  "Energy":   "#3fb950",
+  "EM":       "#79c0ff",
 };
 
-const SECTOR_COLORS = {
-  Tech:"#4da6ff",Auto:"#ffd700",Fin:"#00c896",Cons:"#ff9f43",
-  Hlth:"#ff6b9d",Enrg:"#f8b739",Mat:"#c8a96e",LATM:"#48dbfb",
-  ETF:"#a29bfe",Med:"#fd79a8",Ind:"#81ecec","?":"#5a6a8a",
-};
-
-// Alpha Vantage: free, CORS-enabled, 25 req/day en plan gratuito
 async function fetchPrice(ticker, apiKey) {
   try {
-    const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`;
-    const res = await fetch(url);
+    const res  = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`);
     const data = await res.json();
-    const q = data["Global Quote"];
+    const q    = data["Global Quote"];
     if (!q || !q["05. price"]) return null;
-    const price = parseFloat(q["05. price"]);
-    const prev  = parseFloat(q["08. previous close"]);
+    const price  = parseFloat(q["05. price"]);
+    const prev   = parseFloat(q["08. previous close"]);
     const change = ((price - prev) / prev) * 100;
     return { price, change };
   } catch { return null; }
@@ -136,353 +107,320 @@ async function fetchPrice(ticker, apiKey) {
 
 async function fetchDolarCCL() {
   try {
-    const res = await fetch("https://dolarapi.com/v1/dolares/contadoconliqui");
+    const res  = await fetch("https://dolarapi.com/v1/dolares/contadoconliqui");
     const data = await res.json();
     return data.venta || data.compra || null;
-  } catch {
-    try {
-      // fallback
-      const res2 = await fetch("https://api.bluelytics.com.ar/v2/latest");
-      const d = await res2.json();
-      return d?.blue?.value_sell || null;
-    } catch { return null; }
-  }
+  } catch { return null; }
 }
 
-function ApiKeySetup({ onSave }) {
+// ─── SETUP ────────────────────────────────────────────────────────────────────
+function SetupScreen({ onSave }) {
   const [key, setKey] = useState("");
   return (
-    <div style={{minHeight:"100vh",background:"#070b14",display:"flex",alignItems:"center",justifyContent:"center",fontFamily:"'Courier New',monospace",padding:24}}>
-      <div style={{maxWidth:480,width:"100%",background:"rgba(255,255,255,.03)",border:"1px solid rgba(0,200,150,.2)",borderTop:"2px solid #00c896",padding:32,borderRadius:2}}>
-        <div style={{fontSize:9,letterSpacing:4,color:"#00c896",marginBottom:8}}>◆ CONFIGURACIÓN</div>
-        <div style={{fontSize:22,fontWeight:"bold",color:"#e0f0ff",marginBottom:20,letterSpacing:2}}>CEDEAR Dashboard</div>
+    <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",padding:24}}>
+      <div style={{maxWidth:460,width:"100%",background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,padding:36}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}>
+          <div style={{width:10,height:10,borderRadius:"50%",background:"var(--green)"}} />
+          <span style={{fontFamily:"var(--mono)",fontSize:12,color:"var(--text2)",letterSpacing:1}}>PORTFOLIO SETUP</span>
+        </div>
+        <h1 style={{fontSize:22,fontWeight:700,color:"var(--text)",marginBottom:4}}>Mi Cartera CEDEAR</h1>
+        <p style={{fontSize:13,color:"var(--text2)",marginBottom:28}}>SPY · ACWI · SMH · GLD · GDX · XLE · IEMG</p>
 
-        <p style={{fontSize:11,color:"#5a7a9a",lineHeight:1.7,marginBottom:24}}>
-          Para obtener precios en tiempo real necesitás una API key gratuita de <strong style={{color:"#4da6ff"}}>Alpha Vantage</strong>.
-          <br/>Es gratis, sin tarjeta, tarda 30 segundos.
+        <p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,marginBottom:20}}>
+          Necesitás una API key gratuita de <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a> para cotizaciones en tiempo real.
         </p>
 
-        <ol style={{fontSize:11,color:"#5a7a9a",lineHeight:2,marginBottom:24,paddingLeft:20}}>
-          <li>Entrá a <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style={{color:"#4da6ff"}}>alphavantage.co</a></li>
-          <li>Completá el formulario (nombre + email)</li>
-          <li>Copiá la key que te mandan</li>
-          <li>Pegala acá abajo</li>
-        </ol>
+        <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"14px 16px",marginBottom:20}}>
+          <div style={{fontSize:12,fontWeight:600,color:"var(--text)",marginBottom:8}}>Cómo obtener la key (30 seg)</div>
+          {["Entrá a alphavantage.co → Support → API Key","Ponés nombre + email","Copiás la key que te mandan"].map((s,i)=>(
+            <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<2?6:0}}>
+              <div style={{minWidth:20,height:20,borderRadius:"50%",background:"var(--border2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:"var(--text2)",marginTop:1}}>{i+1}</div>
+              <span style={{fontSize:13,color:"var(--text2)"}}>{s}</span>
+            </div>
+          ))}
+        </div>
 
-        <div style={{marginBottom:8,fontSize:8,letterSpacing:2,color:"#3a4a6a"}}>API KEY</div>
-        <input
-          type="text"
-          placeholder="Ej: ABCDEF123456"
-          value={key}
+        <label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--text2)",marginBottom:6,letterSpacing:.5}}>API KEY</label>
+        <input type="text" placeholder="Ej: ABCDEF123456XYZ" value={key}
           onChange={e => setKey(e.target.value)}
-          onKeyDown={e => e.key === "Enter" && key.trim() && onSave(key.trim())}
-          style={{width:"100%",background:"rgba(0,0,0,.6)",border:"1px solid rgba(255,255,255,.15)",color:"#e0f0ff",padding:"10px 14px",fontSize:13,borderRadius:2,fontFamily:"'Courier New',monospace",marginBottom:12}}
+          onKeyDown={e => e.key==="Enter" && key.trim() && onSave(key.trim())}
+          style={{width:"100%",background:"var(--bg)",border:"1px solid var(--border2)",color:"var(--text)",padding:"10px 14px",fontSize:14,borderRadius:6,fontFamily:"var(--mono)",marginBottom:12}}
         />
-        <button
-          onClick={() => key.trim() && onSave(key.trim())}
-          style={{width:"100%",background:"rgba(0,200,150,.15)",border:"1px solid rgba(0,200,150,.45)",color:"#00c896",padding:"10px",fontSize:11,letterSpacing:3,borderRadius:2}}
-        >GUARDAR Y CONTINUAR →</button>
-
-        <p style={{fontSize:9,color:"#2a3a5a",marginTop:16,letterSpacing:1,textAlign:"center"}}>
-          La key se guarda solo en tu navegador (localStorage). Plan gratuito: 25 requests/día.
-        </p>
+        <button onClick={() => key.trim() && onSave(key.trim())}
+          style={{width:"100%",background:"var(--green)",border:"none",color:"#000",padding:"11px",fontSize:14,fontWeight:700,borderRadius:6,cursor:"pointer",letterSpacing:.3}}>
+          Ingresar al Dashboard →
+        </button>
+        <p style={{fontSize:11,color:"var(--text3)",marginTop:14,textAlign:"center"}}>La key se guarda en tu navegador. Plan gratuito: 25 consultas/día.</p>
       </div>
     </div>
   );
 }
 
+// ─── MAIN ─────────────────────────────────────────────────────────────────────
 function App() {
-  const [apiKey, setApiKey]       = useState(() => localStorage.getItem("av_key") || "");
-  const [holdings, setHoldings]   = useState(() => { try { return JSON.parse(localStorage.getItem("cedear_holdings") || "{}"); } catch { return {}; }});
-  const [prices, setPrices]       = useState({});
-  const [dolarCCL, setDolarCCL]   = useState(null);
-  const [loading, setLoading]     = useState(false);
-  const [lastUpdate, setLastUpdate] = useState(null);
-  const [editTicker, setEditTicker] = useState(null);
-  const [addMode, setAddMode]     = useState(false);
-  const [newTicker, setNewTicker] = useState("");
-  const [newAmount, setNewAmount] = useState("");
-  const [editAmount, setEditAmount] = useState("");
-  const [customRatio, setCustomRatio] = useState("");
-  const [customName, setCustomName]   = useState("");
-  const [extraTickers, setExtraTickers] = useState({});
-  const [sortBy, setSortBy]       = useState("value");
-  const [currency, setCurrency]   = useState("both");
-  const [filterSector, setFilterSector] = useState("ALL");
-  const [apiError, setApiError]   = useState("");
+  const [apiKey,    setApiKey]    = useState(() => localStorage.getItem("av_key") || "");
+  const [nominales, setNominales] = useState(() => { try { return JSON.parse(localStorage.getItem("nominales")||"{}"); } catch { return {}; }});
+  const [prices,    setPrices]    = useState({});
+  const [ccl,       setCcl]       = useState(null);
+  const [loading,   setLoading]   = useState(false);
+  const [lastSync,  setLastSync]  = useState(null);
+  const [apiError,  setApiError]  = useState("");
+  const [editing,   setEditing]   = useState(null);
+  const [editVal,   setEditVal]   = useState("");
 
-  const saveKey = (k) => { localStorage.setItem("av_key", k); setApiKey(k); };
+  const saveKey = k => { localStorage.setItem("av_key", k); setApiKey(k); };
 
-  // Persist holdings
-  useEffect(() => { localStorage.setItem("cedear_holdings", JSON.stringify(holdings)); }, [holdings]);
-
-  const allDB = { ...CEDEAR_DB, ...extraTickers };
-  const getInfo = (t) => allDB[t] || { ratio: 1, name: t, emoji: "📈", sector: "?" };
-
-  const getValueUSD = (ticker) => {
-    const info = getInfo(ticker);
-    const qty  = holdings[ticker] || 0;
-    const price = prices[ticker]?.price || 0;
-    return info.ratioInverse ? qty * info.ratio * price : (qty / info.ratio) * price;
-  };
-  const getValueARS = (t) => getValueUSD(t) * (dolarCCL || 0);
+  useEffect(() => { localStorage.setItem("nominales", JSON.stringify(nominales)); }, [nominales]);
 
   const fetchAll = useCallback(async () => {
     if (!apiKey) return;
-    setLoading(true);
-    setApiError("");
-    const tickers = Object.keys(holdings);
-    if (!tickers.length) { setLoading(false); return; }
-
-    // Fetch CCL (no key needed)
-    const ccl = await fetchDolarCCL();
-    if (ccl) setDolarCCL(ccl);
-
-    // Fetch prices sequentially with small delay to respect rate limits
+    setLoading(true); setApiError("");
+    const cclVal = await fetchDolarCCL();
+    if (cclVal) setCcl(cclVal);
     const newPrices = {};
-    for (let i = 0; i < tickers.length; i++) {
-      const t = tickers[i];
-      if (i > 0) await new Promise(r => setTimeout(r, 300)); // 300ms entre requests
-      const result = await fetchPrice(t, apiKey);
-      if (result) {
-        newPrices[t] = result;
-      } else {
-        // Check if it's an API limit issue
-        setApiError("⚠ Límite de requests alcanzado (25/día en plan gratuito). Intentá más tarde.");
-      }
+    for (let i = 0; i < CARTERA.length; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 300));
+      const r = await fetchPrice(CARTERA[i].ticker, apiKey);
+      if (r) newPrices[CARTERA[i].ticker] = r;
+      else   setApiError("Algunos precios no cargaron — límite Alpha Vantage: 25 req/día.");
     }
-
-    setPrices(p => ({ ...p, ...newPrices }));
-    setLastUpdate(new Date());
+    setPrices(p => ({...p,...newPrices}));
+    setLastSync(new Date());
     setLoading(false);
-  }, [holdings, apiKey]);
+  }, [apiKey]);
 
-  useEffect(() => {
-    if (apiKey && Object.keys(holdings).length > 0) fetchAll();
-  }, [holdings, apiKey]);
+  useEffect(() => { if (apiKey) fetchAll(); }, [apiKey]);
+  useEffect(() => { const iv = setInterval(fetchAll, 120000); return ()=>clearInterval(iv); }, [fetchAll]);
 
-  if (!apiKey) return <ApiKeySetup onSave={saveKey} />;
+  if (!apiKey) return <SetupScreen onSave={saveKey} />;
 
-  const totalUSD = Object.keys(holdings).reduce((s, t) => s + getValueUSD(t), 0);
-  const totalARS = totalUSD * (dolarCCL || 0);
-  const totalChange = Object.keys(holdings).reduce((s, t) => {
-    const w = totalUSD > 0 ? getValueUSD(t) / totalUSD : 0;
-    return s + (prices[t]?.change || 0) * w;
-  }, 0);
-
-  const sectors = [...new Set(Object.keys(holdings).map(t => getInfo(t).sector))].filter(Boolean);
-  const filtered = Object.keys(holdings).filter(t => filterSector === "ALL" || getInfo(t).sector === filterSector);
-  const sorted = [...filtered].sort((a, b) => {
-    if (sortBy === "value")  return getValueUSD(b) - getValueUSD(a);
-    if (sortBy === "change") return (prices[b]?.change || 0) - (prices[a]?.change || 0);
-    return a.localeCompare(b);
-  });
-
-  const handleAdd = () => {
-    const ticker = newTicker.toUpperCase().trim();
-    if (!ticker || !newAmount || Number(newAmount) <= 0) return;
-    if (!allDB[ticker] && customRatio) {
-      setExtraTickers(prev => ({ ...prev, [ticker]: { ratio: Number(customRatio), name: customName || ticker, emoji: "📈", sector: "?" } }));
-    }
-    setHoldings(prev => ({ ...prev, [ticker]: Number(newAmount) }));
-    setNewTicker(""); setNewAmount(""); setCustomRatio(""); setCustomName(""); setAddMode(false);
+  const getUSD = t => {
+    const info  = CARTERA.find(c => c.ticker===t);
+    const qty   = nominales[t] || 0;
+    const price = prices[t]?.price || 0;
+    return qty && price ? (qty / info.ratio) * price : 0;
   };
 
-  const fmtUSD = n => n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
-  const fmtARS = n => `$${Math.round(n).toLocaleString("es-AR")}`;
-  const fmtPct = n => `${n >= 0 ? "+" : ""}${n.toFixed(2)}%`;
-  const pc = n => n >= 0 ? "#00c896" : "#ff4d6d";
-  const matched = newTicker && allDB[newTicker.toUpperCase()];
+  const totalUSD    = CARTERA.reduce((s,c) => s + getUSD(c.ticker), 0);
+  const totalARS    = totalUSD * (ccl || 0);
+  const hasNominals = CARTERA.some(c => nominales[c.ticker] > 0);
+  const perf        = CARTERA.reduce((s,c) => {
+    const w = totalUSD > 0 ? getUSD(c.ticker)/totalUSD : 0;
+    return s + (prices[c.ticker]?.change||0)*w;
+  }, 0);
 
-  const inp = (extra={}) => ({ background:"rgba(0,0,0,.6)", border:"1px solid rgba(255,255,255,.12)", color:"#e0f0ff", padding:"6px 10px", fontSize:12, borderRadius:2, fontFamily:"'Courier New',monospace", ...extra });
+  const fUSD = n => n.toLocaleString("en-US",{style:"currency",currency:"USD",minimumFractionDigits:2,maximumFractionDigits:2});
+  const fARS = n => "$" + Math.round(n).toLocaleString("es-AR");
+  const fPct = n => (n>=0?"+":"")+n.toFixed(2)+"%";
+  const isUp = n => n >= 0;
+
+  const saveEdit = ticker => {
+    const v = parseFloat(editVal);
+    if (!isNaN(v) && v >= 0) setNominales(p=>({...p,[ticker]:v}));
+    setEditing(null);
+  };
 
   return (
-    <div style={{minHeight:"100vh",background:"#070b14",fontFamily:"'Courier New',monospace",color:"#c8d8f0",backgroundImage:"radial-gradient(ellipse at 15% 40%,rgba(0,80,200,.07) 0%,transparent 55%)"}}>
+    <div style={{minHeight:"100vh",background:"var(--bg)",color:"var(--text)"}}>
 
-      {/* Header */}
-      <div style={{borderBottom:"1px solid rgba(0,200,150,.15)",padding:"16px 24px",display:"flex",alignItems:"center",justifyContent:"space-between",background:"rgba(0,0,0,.4)",backdropFilter:"blur(8px)",position:"sticky",top:0,zIndex:10}}>
-        <div>
-          <div style={{fontSize:9,letterSpacing:4,color:"#00c896",marginBottom:2}}>◆ Alpha Vantage · DolarAPI CCL</div>
-          <div style={{fontSize:20,fontWeight:"bold",letterSpacing:2,color:"#e0f0ff"}}>CEDEAR Dashboard</div>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center"}}>
-          {lastUpdate && <div style={{fontSize:9,color:"#3a4a6a",letterSpacing:1}}>SYNC {lastUpdate.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}</div>}
-          <button onClick={fetchAll} disabled={loading||!Object.keys(holdings).length}
-            style={{background:"rgba(0,200,150,.12)",border:"1px solid rgba(0,200,150,.35)",color:loading?"#2a6a5a":"#00c896",padding:"5px 14px",fontSize:10,letterSpacing:2,borderRadius:2}}>
-            {loading ? "···" : "↺ SYNC"}
-          </button>
-          <button onClick={() => { localStorage.removeItem("av_key"); setApiKey(""); }}
-            style={{background:"transparent",border:"1px solid rgba(255,255,255,.07)",color:"#2a3a5a",padding:"5px 10px",fontSize:9,letterSpacing:1,borderRadius:2}}
-            title="Cambiar API Key">🔑</button>
+      {/* ── TOPBAR ── */}
+      <div style={{background:"var(--bg2)",borderBottom:"1px solid var(--border)",position:"sticky",top:0,zIndex:10}}>
+        <div style={{maxWidth:1000,margin:"0 auto",padding:"0 20px",height:52,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div style={{display:"flex",alignItems:"center",gap:16}}>
+            <div style={{width:8,height:8,borderRadius:"50%",background:"var(--green)",boxShadow:"0 0 6px var(--green)"}} />
+            <span style={{fontWeight:700,fontSize:15,letterSpacing:.3}}>Mi Cartera CEDEAR</span>
+            <span style={{fontSize:12,color:"var(--text3)",fontFamily:"var(--mono)"}}>7 posiciones</span>
+          </div>
+          <div style={{display:"flex",alignItems:"center",gap:12}}>
+            {lastSync && (
+              <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>
+                {lastSync.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
+              </span>
+            )}
+            <button onClick={fetchAll} disabled={loading}
+              style={{background:loading?"var(--bg3)":"var(--bg3)",border:"1px solid var(--border2)",color:loading?"var(--text3)":"var(--text2)",padding:"5px 14px",fontSize:12,fontWeight:500,borderRadius:5,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              <span style={{fontSize:14,display:"inline-block",animation:loading?"spin 1s linear infinite":"none"}}>↻</span>
+              {loading ? "Actualizando..." : "Actualizar"}
+            </button>
+            <button onClick={()=>{localStorage.removeItem("av_key");setApiKey("");}}
+              title="Cambiar API Key"
+              style={{background:"transparent",border:"1px solid var(--border)",color:"var(--text3)",padding:"5px 10px",fontSize:12,borderRadius:5,cursor:"pointer"}}>
+              API Key
+            </button>
+          </div>
         </div>
       </div>
 
-      <div style={{padding:"16px 24px",maxWidth:920,margin:"0 auto"}}>
+      <div style={{maxWidth:1000,margin:"0 auto",padding:"24px 20px"}}>
 
-        {/* API error banner */}
         {apiError && (
-          <div style={{background:"rgba(255,180,0,.08)",border:"1px solid rgba(255,180,0,.3)",color:"#f8b739",padding:"8px 14px",borderRadius:2,fontSize:10,marginBottom:14,letterSpacing:1}}>
-            {apiError}
+          <div style={{background:"var(--gold-bg)",border:"1px solid var(--gold)",borderRadius:6,padding:"10px 16px",fontSize:13,color:"var(--gold)",marginBottom:20,display:"flex",alignItems:"center",gap:10}}>
+            <span>⚠</span> {apiError}
           </div>
         )}
 
-        {/* Totals */}
-        {Object.keys(holdings).length > 0 && (
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:10,marginBottom:18}}>
+        {/* ── STAT CARDS ── */}
+        {hasNominals && (
+          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:28}}>
             {[
-              {label:"TOTAL USD", value:fmtUSD(totalUSD),       color:"#00c896"},
-              {label:"TOTAL ARS", value:fmtARS(totalARS),       color:"#4da6ff"},
-              {label:"PERF HOY",  value:fmtPct(totalChange),    color:pc(totalChange)},
-              {label:"CCL VENTA", value:dolarCCL?fmtARS(dolarCCL):"—", color:"#ffd700"},
-            ].map(({label,value,color})=>(
-              <div key={label} style={{background:"rgba(255,255,255,.025)",border:`1px solid ${color}18`,borderTop:`2px solid ${color}`,padding:"12px 14px",borderRadius:2}}>
-                <div style={{fontSize:8,letterSpacing:3,color:"#3a4a6a",marginBottom:3}}>{label}</div>
-                <div style={{fontSize:17,fontWeight:"bold",color,letterSpacing:1}}>{value}</div>
+              {label:"Valor Total USD", value:fUSD(totalUSD),  sub:"al tipo CCL",      color:"var(--green)", border:"rgba(63,185,80,.3)"},
+              {label:"Valor Total ARS", value:fARS(totalARS),  sub:"pesos argentinos", color:"var(--blue)",  border:"rgba(88,166,255,.3)"},
+              {label:"Perf. del día",   value:fPct(perf),      sub:"variación pond.",  color:isUp(perf)?"var(--green)":"var(--red)", border:isUp(perf)?"rgba(63,185,80,.3)":"rgba(248,81,73,.3)"},
+              {label:"Dólar CCL",       value:ccl?fARS(ccl):"—", sub:"tipo de cambio venta", color:"var(--gold)", border:"rgba(210,153,34,.3)"},
+            ].map(({label,value,sub,color,border})=>(
+              <div key={label} className="stat-card" style={{background:"var(--bg2)",border:`1px solid ${border}`,borderRadius:8,padding:"16px 18px"}}>
+                <div style={{fontSize:11,fontWeight:500,color:"var(--text2)",marginBottom:6,letterSpacing:.3}}>{label}</div>
+                <div style={{fontSize:20,fontWeight:700,color,fontFamily:"var(--mono)",letterSpacing:.5}}>{value}</div>
+                <div style={{fontSize:11,color:"var(--text3)",marginTop:4}}>{sub}</div>
               </div>
             ))}
           </div>
         )}
 
-        {/* Controls */}
-        {Object.keys(holdings).length > 0 && (
-          <div style={{display:"flex",gap:5,marginBottom:12,flexWrap:"wrap",alignItems:"center"}}>
-            <span style={{fontSize:8,color:"#2a3a5a",letterSpacing:2}}>ORDEN</span>
-            {["value","change","name"].map(s=>(
-              <button key={s} onClick={()=>setSortBy(s)} style={{background:sortBy===s?"rgba(0,200,150,.12)":"transparent",border:`1px solid ${sortBy===s?"rgba(0,200,150,.4)":"rgba(255,255,255,.06)"}`,color:sortBy===s?"#00c896":"#3a4a6a",padding:"2px 9px",fontSize:8,letterSpacing:2,borderRadius:2}}>{s.toUpperCase()}</button>
-            ))}
-            <span style={{fontSize:8,color:"#2a3a5a",letterSpacing:2,marginLeft:6}}>VER</span>
-            {["both","usd","ars"].map(c=>(
-              <button key={c} onClick={()=>setCurrency(c)} style={{background:currency===c?"rgba(77,166,255,.12)":"transparent",border:`1px solid ${currency===c?"rgba(77,166,255,.4)":"rgba(255,255,255,.06)"}`,color:currency===c?"#4da6ff":"#3a4a6a",padding:"2px 9px",fontSize:8,letterSpacing:2,borderRadius:2}}>{c.toUpperCase()}</button>
-            ))}
-            {sectors.length > 1 && <>
-              <span style={{fontSize:8,color:"#2a3a5a",letterSpacing:2,marginLeft:6}}>SECTOR</span>
-              <button onClick={()=>setFilterSector("ALL")} style={{background:filterSector==="ALL"?"rgba(255,255,255,.08)":"transparent",border:`1px solid ${filterSector==="ALL"?"rgba(255,255,255,.2)":"rgba(255,255,255,.06)"}`,color:filterSector==="ALL"?"#c8d8f0":"#3a4a6a",padding:"2px 9px",fontSize:8,letterSpacing:2,borderRadius:2}}>ALL</button>
-              {sectors.map(s=>{const sc=SECTOR_COLORS[s]||"#5a6a8a";return(
-                <button key={s} onClick={()=>setFilterSector(s)} style={{background:filterSector===s?`${sc}18`:"transparent",border:`1px solid ${filterSector===s?`${sc}55`:"rgba(255,255,255,.06)"}`,color:filterSector===s?sc:"#3a4a6a",padding:"2px 9px",fontSize:8,letterSpacing:2,borderRadius:2}}>{s}</button>
-              );})}
-            </>}
-          </div>
-        )}
+        {/* ── TABLE HEADER ── */}
+        <div style={{display:"grid",gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1.2fr",gap:0,padding:"8px 16px",marginBottom:4}}>
+          {["Instrumento","Precio USD","Var. día","Nominales","Valor USD","Cartera"].map(h=>(
+            <div key={h} style={{fontSize:11,fontWeight:600,color:"var(--text3)",letterSpacing:.5,textTransform:"uppercase",textAlign:h==="Instrumento"?"left":"right"}}>{h}</div>
+          ))}
+        </div>
 
-        {/* Holdings */}
-        <div>
-          {sorted.map(ticker => {
-            const info   = getInfo(ticker);
-            const qty    = holdings[ticker];
+        {/* ── ROWS ── */}
+        <div style={{display:"flex",flexDirection:"column",gap:2}}>
+          {CARTERA.map(({ ticker, name, ratio, sector }) => {
             const pd     = prices[ticker];
-            const vUSD   = getValueUSD(ticker);
-            const vARS   = getValueARS(ticker);
+            const qty    = nominales[ticker] || 0;
+            const vUSD   = getUSD(ticker);
+            const vARS   = vUSD * (ccl||0);
             const chg    = pd?.change || 0;
-            const weight = totalUSD > 0 ? (vUSD / totalUSD) * 100 : 0;
-            const sc     = SECTOR_COLORS[info.sector] || "#5a6a8a";
-            return (
-              <div key={ticker} style={{background:"rgba(255,255,255,.018)",border:"1px solid rgba(255,255,255,.05)",borderLeft:`3px solid ${chg>=0?"#00c896":"#ff4d6d"}`,padding:"13px 15px",borderRadius:2,position:"relative",overflow:"hidden",marginBottom:7}}>
-                <div style={{position:"absolute",bottom:0,left:0,width:`${weight}%`,height:2,background:`${sc}44`,transition:"width .6s ease"}} />
-                <div style={{display:"flex",alignItems:"center",gap:10,justifyContent:"space-between"}}>
+            const weight = hasNominals && totalUSD>0 ? (vUSD/totalUSD)*100 : 0;
+            const isEdit = editing === ticker;
+            const sc     = SECTOR_COLOR[sector] || "var(--text2)";
 
-                  <div style={{display:"flex",alignItems:"center",gap:10,minWidth:140}}>
-                    <span style={{fontSize:18}}>{info.emoji}</span>
-                    <div>
-                      <div style={{display:"flex",alignItems:"center",gap:6}}>
-                        <span style={{fontSize:13,fontWeight:"bold",color:"#e0f0ff",letterSpacing:1}}>{ticker}</span>
-                        <span style={{fontSize:7,color:sc,border:`1px solid ${sc}44`,padding:"1px 5px",borderRadius:2,letterSpacing:1}}>{info.sector}</span>
-                      </div>
-                      <div style={{fontSize:9,color:"#3a4a6a",marginTop:1}}>{info.name}</div>
+            return (
+              <div key={ticker} className="ticker-row" style={{
+                background:"var(--bg2)",
+                border:"1px solid var(--border)",
+                borderRadius:8,
+                padding:"14px 16px",
+                display:"grid",
+                gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 1.2fr",
+                alignItems:"center",
+                gap:0,
+                position:"relative",
+                overflow:"hidden",
+              }}>
+
+                {/* progress bar at bottom */}
+                {weight>0 && (
+                  <div style={{position:"absolute",bottom:0,left:0,width:`${weight}%`,height:2,background:"rgba(63,185,80,.4)",transition:"width .6s ease"}} />
+                )}
+
+                {/* ── col 1: identity ── */}
+                <div style={{display:"flex",alignItems:"center",gap:12}}>
+                  <div style={{width:36,height:36,borderRadius:6,background:"var(--bg3)",border:"1px solid var(--border2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
+                    <span style={{fontFamily:"var(--mono)",fontSize:11,fontWeight:700,color:sc}}>{ticker}</span>
+                  </div>
+                  <div>
+                    <div style={{fontSize:14,fontWeight:600,color:"var(--text)"}}>{ticker}</div>
+                    <div style={{fontSize:11,color:"var(--text2)",marginTop:1}}>{name}</div>
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginTop:3}}>
+                      <span style={{fontSize:10,color:sc,background:`${sc}15`,padding:"1px 7px",borderRadius:10,fontWeight:500}}>{sector}</span>
+                      <span style={{fontSize:10,color:"var(--text3)",fontFamily:"var(--mono)"}}>{ratio}:1</span>
                     </div>
                   </div>
-
-                  <div style={{textAlign:"center",flex:1}}>
-                    {editTicker === ticker ? (
-                      <div style={{display:"flex",gap:5,justifyContent:"center"}}>
-                        <input autoFocus type="number" value={editAmount} onChange={e=>setEditAmount(e.target.value)}
-                          onKeyDown={e=>e.key==="Enter"&&(setHoldings(p=>({...p,[ticker]:Number(editAmount)})),setEditTicker(null))}
-                          style={inp({width:70,fontSize:11})} />
-                        <button onClick={()=>{setHoldings(p=>({...p,[ticker]:Number(editAmount)}));setEditTicker(null);}} style={{background:"rgba(0,200,150,.2)",border:"1px solid #00c896",color:"#00c896",padding:"3px 7px",fontSize:9,borderRadius:2}}>✓</button>
-                        <button onClick={()=>setEditTicker(null)} style={{background:"transparent",border:"1px solid #3a4a6a",color:"#3a4a6a",padding:"3px 7px",fontSize:9,borderRadius:2}}>✕</button>
-                      </div>
-                    ) : (
-                      <>
-                        <div style={{fontSize:11,color:"#5a7a9a"}}>{qty} CEDs</div>
-                        <div style={{fontSize:8,color:"#2a3a5a"}}>{info.ratioInverse?`1 CED = ${info.ratio} acc`:`${info.ratio} CEDs = 1 acc`}</div>
-                        {pd
-                          ? <div style={{fontSize:9,color:"#2a4a6a"}}>${pd.price.toFixed(2)} <span style={{color:pc(chg)}}>{fmtPct(chg)}</span></div>
-                          : <div style={{fontSize:9,color:"#1a2a3a"}}>cargando…</div>
-                        }
-                      </>
-                    )}
-                  </div>
-
-                  <div style={{textAlign:"right",minWidth:120}}>
-                    {pd ? <>
-                      {(currency==="usd"||currency==="both") && <div style={{fontSize:14,fontWeight:"bold",color:"#00c896",letterSpacing:1}}>{fmtUSD(vUSD)}</div>}
-                      {(currency==="ars"||currency==="both") && <div style={{fontSize:currency==="both"?10:14,color:currency==="both"?"#2a4a6a":"#4da6ff",fontWeight:currency==="ars"?"bold":"normal"}}>{fmtARS(vARS)}</div>}
-                      <div style={{fontSize:9,color:sc,marginTop:2,display:"flex",alignItems:"center",justifyContent:"flex-end",gap:4}}>
-                        <div style={{width:28,height:3,background:"rgba(255,255,255,.06)",borderRadius:2,overflow:"hidden"}}>
-                          <div style={{width:`${Math.min(weight,100)}%`,height:"100%",background:sc,borderRadius:2}} />
-                        </div>
-                        {weight.toFixed(1)}%
-                      </div>
-                    </> : <div style={{fontSize:9,color:"#1a2a4a"}}>—</div>}
-                  </div>
-
-                  <div style={{display:"flex",gap:3,marginLeft:8}}>
-                    <button onClick={()=>{setEditTicker(ticker);setEditAmount(String(qty));}} style={{background:"transparent",border:"1px solid rgba(255,255,255,.06)",color:"#3a4a6a",padding:"4px 7px",fontSize:9,borderRadius:2}}>✎</button>
-                    <button onClick={()=>setHoldings(p=>{const n={...p};delete n[ticker];return n;})} style={{background:"transparent",border:"1px solid rgba(255,60,80,.15)",color:"#5a2a3a",padding:"4px 7px",fontSize:9,borderRadius:2}}>✕</button>
-                  </div>
                 </div>
+
+                {/* ── col 2: price ── */}
+                <div style={{textAlign:"right"}}>
+                  {pd ? (
+                    <div style={{fontFamily:"var(--mono)",fontSize:14,fontWeight:600,color:"var(--text)"}}>${pd.price.toFixed(2)}</div>
+                  ) : (
+                    <div style={{fontSize:12,color:"var(--text3)"}}>—</div>
+                  )}
+                </div>
+
+                {/* ── col 3: change badge ── */}
+                <div style={{textAlign:"right"}}>
+                  {pd ? (
+                    <span className={isUp(chg)?"badge-up":"badge-down"} style={{
+                      fontFamily:"var(--mono)",fontSize:12,fontWeight:600,
+                      padding:"3px 9px",borderRadius:5,display:"inline-block",
+                    }}>
+                      {fPct(chg)}
+                    </span>
+                  ) : (
+                    <span style={{fontSize:12,color:"var(--text3)"}}>—</span>
+                  )}
+                </div>
+
+                {/* ── col 4: nominales editable ── */}
+                <div style={{textAlign:"right"}}>
+                  {isEdit ? (
+                    <div style={{display:"flex",gap:4,justifyContent:"flex-end"}}>
+                      <input autoFocus type="number" value={editVal}
+                        onChange={e=>setEditVal(e.target.value)}
+                        onKeyDown={e=>{ if(e.key==="Enter") saveEdit(ticker); if(e.key==="Escape") setEditing(null); }}
+                        style={{width:72,background:"var(--bg)",border:"1px solid var(--blue)",color:"var(--text)",padding:"4px 8px",fontSize:13,borderRadius:5,fontFamily:"var(--mono)",textAlign:"right"}}
+                      />
+                      <button onClick={()=>saveEdit(ticker)}
+                        style={{background:"var(--green)",border:"none",color:"#000",padding:"4px 8px",fontSize:12,fontWeight:700,borderRadius:5,cursor:"pointer"}}>✓</button>
+                    </div>
+                  ) : (
+                    <div className="editable" onClick={()=>{ setEditing(ticker); setEditVal(qty?String(qty):""); }}
+                      style={{
+                        cursor:"pointer",
+                        fontFamily:"var(--mono)",fontSize:14,fontWeight:600,
+                        color: qty ? "var(--text)" : "var(--text3)",
+                        border:"1px solid transparent",
+                        borderRadius:5,padding:"3px 8px",display:"inline-block",
+                        textAlign:"right",minWidth:52,
+                      }}
+                      title="Click para editar">
+                      {qty || <span style={{fontSize:12,color:"var(--text3)"}}>—</span>}
+                    </div>
+                  )}
+                </div>
+
+                {/* ── col 5: value USD ── */}
+                <div style={{textAlign:"right"}}>
+                  {qty>0 && pd ? (
+                    <>
+                      <div style={{fontFamily:"var(--mono)",fontSize:14,fontWeight:600,color:"var(--green)"}}>{fUSD(vUSD)}</div>
+                      <div style={{fontFamily:"var(--mono)",fontSize:11,color:"var(--text3)",marginTop:2}}>{fARS(vARS)}</div>
+                    </>
+                  ) : (
+                    <span style={{fontSize:12,color:"var(--text3)"}}>—</span>
+                  )}
+                </div>
+
+                {/* ── col 6: weight ── */}
+                <div style={{textAlign:"right",paddingLeft:8}}>
+                  {weight>0 ? (
+                    <>
+                      <div style={{fontFamily:"var(--mono)",fontSize:13,fontWeight:600,color:"var(--text2)"}}>{weight.toFixed(1)}%</div>
+                      <div style={{marginTop:5,height:4,background:"var(--bg3)",borderRadius:4,overflow:"hidden"}}>
+                        <div style={{width:`${Math.min(weight,100)}%`,height:"100%",background:"rgba(63,185,80,.6)",borderRadius:4,transition:"width .6s ease"}} />
+                      </div>
+                    </>
+                  ) : (
+                    <span style={{fontSize:12,color:"var(--text3)"}}>—</span>
+                  )}
+                </div>
+
               </div>
             );
           })}
         </div>
 
-        {/* Add form */}
-        {addMode ? (
-          <div style={{marginTop:10,background:"rgba(0,0,0,.5)",border:"1px solid rgba(0,200,150,.25)",padding:16,borderRadius:2}}>
-            <div style={{fontSize:8,letterSpacing:3,color:"#00c896",marginBottom:12}}>+ AGREGAR CEDEAR</div>
-            <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"flex-end"}}>
-              <div>
-                <div style={{fontSize:8,color:"#3a4a6a",marginBottom:4,letterSpacing:1}}>TICKER</div>
-                <input list="cedear-list" placeholder="AAPL, TSLA…" value={newTicker} onChange={e=>setNewTicker(e.target.value.toUpperCase())} style={inp({width:110})} />
-                <datalist id="cedear-list">{Object.entries(CEDEAR_DB).map(([k,v])=><option key={k} value={k}>{v.name}</option>)}</datalist>
-              </div>
-              <div>
-                <div style={{fontSize:8,color:"#3a4a6a",marginBottom:4,letterSpacing:1}}>NOMINALES</div>
-                <input type="number" placeholder="100" value={newAmount} onChange={e=>setNewAmount(e.target.value)} onKeyDown={e=>e.key==="Enter"&&handleAdd()} style={inp({width:90})} />
-              </div>
-              {newTicker && !matched && <>
-                <div>
-                  <div style={{fontSize:8,color:"#ffd700",marginBottom:4,letterSpacing:1}}>RATIO</div>
-                  <input type="number" placeholder="10" value={customRatio} onChange={e=>setCustomRatio(e.target.value)} style={inp({width:70,borderColor:"rgba(255,215,0,.3)"})} />
-                </div>
-                <div>
-                  <div style={{fontSize:8,color:"#ffd700",marginBottom:4,letterSpacing:1}}>NOMBRE</div>
-                  <input placeholder="Empresa" value={customName} onChange={e=>setCustomName(e.target.value)} style={inp({width:110,borderColor:"rgba(255,215,0,.3)"})} />
-                </div>
-              </>}
-              <button onClick={handleAdd} style={{background:"rgba(0,200,150,.15)",border:"1px solid rgba(0,200,150,.45)",color:"#00c896",padding:"7px 18px",fontSize:10,letterSpacing:2,borderRadius:2}}>AGREGAR</button>
-              <button onClick={()=>{setAddMode(false);setNewTicker("");setNewAmount("");}} style={{background:"transparent",border:"1px solid rgba(255,255,255,.07)",color:"#3a4a6a",padding:"7px 14px",fontSize:10,borderRadius:2}}>cancelar</button>
-            </div>
-            {matched && <div style={{fontSize:8,color:"#00c896",marginTop:8,letterSpacing:1}}>✓ {matched.name} · {matched.ratioInverse?`1 CEDEAR = ${matched.ratio} acciones`:`${matched.ratio} CEDEARs = 1 acción`} · Fuente: Comafi</div>}
-          </div>
-        ) : (
-          <button onClick={()=>setAddMode(true)}
-            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(0,200,150,.4)";e.currentTarget.style.color="#00c896";}}
-            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(0,200,150,.15)";e.currentTarget.style.color="#1a3a2a";}}
-            style={{marginTop:10,width:"100%",background:"rgba(255,255,255,.015)",border:"1px dashed rgba(0,200,150,.15)",color:"#1a3a2a",padding:"11px",fontSize:10,letterSpacing:3,borderRadius:2}}>
-            + AGREGAR CEDEAR
-          </button>
-        )}
-
-        {!Object.keys(holdings).length && !addMode && (
-          <div style={{textAlign:"center",padding:"52px 0",color:"#1a2a4a"}}>
-            <div style={{fontSize:36,marginBottom:10}}>📊</div>
-            <div style={{fontSize:10,letterSpacing:3}}>AGREGÁ TUS CEDEARs PARA EMPEZAR</div>
-            <div style={{fontSize:8,color:"#0f1a2a",marginTop:6,letterSpacing:1}}>+80 tickers · ratios oficiales Comafi</div>
+        {!hasNominals && (
+          <div style={{textAlign:"center",padding:"32px 0",color:"var(--text3)",fontSize:13}}>
+            Hacé click en la columna <strong style={{color:"var(--text2)"}}>Nominales</strong> para ingresar tus posiciones
           </div>
         )}
 
-        <div style={{marginTop:28,paddingTop:14,borderTop:"1px solid rgba(255,255,255,.03)",fontSize:8,color:"#0f1a2a",letterSpacing:1,textAlign:"center"}}>
-          PRECIOS: ALPHA VANTAGE · CCL: DOLARAPI · RATIOS: COMAFI 2025 · SOLO REFERENCIAL
+        <div style={{marginTop:28,paddingTop:16,borderTop:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <span style={{fontSize:11,color:"var(--text3)"}}>Precios: Alpha Vantage · CCL: DolarAPI · Ratios: Comafi · Solo referencial</span>
+          <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>AUTO-SYNC 2 min</span>
         </div>
       </div>
     </div>
