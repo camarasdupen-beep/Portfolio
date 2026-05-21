@@ -63,6 +63,12 @@
     .badge-up   { background: var(--green-dim); color: var(--green); }
     .badge-down { background: var(--red-dim);   color: var(--red);   }
 
+    @keyframes flashGreen {
+      0%   { background: rgba(63,185,80,.25); }
+      100% { background: var(--bg2); }
+    }
+    .flash { animation: flashGreen .8s ease-out; }
+
     /* ── stat card ── */
     .stat-card { transition: border-color .15s; }
     .stat-card:hover { border-color: var(--border2); }
@@ -94,12 +100,11 @@ const SECTOR_COLOR = {
 
 async function fetchPrice(ticker, apiKey) {
   try {
-    const res  = await fetch(`https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${ticker}&apikey=${apiKey}`);
+    const res  = await fetch(`https://api.twelvedata.com/quote?symbol=${ticker}&apikey=${apiKey}`);
     const data = await res.json();
-    const q    = data["Global Quote"];
-    if (!q || !q["05. price"]) return null;
-    const price  = parseFloat(q["05. price"]);
-    const prev   = parseFloat(q["08. previous close"]);
+    if (data.status === "error" || !data.close) return null;
+    const price  = parseFloat(data.close);
+    const prev   = parseFloat(data.previous_close);
     const change = ((price - prev) / prev) * 100;
     return { price, change };
   } catch { return null; }
@@ -127,12 +132,12 @@ function SetupScreen({ onSave }) {
         <p style={{fontSize:13,color:"var(--text2)",marginBottom:28}}>SPY · ACWI · SMH · GLD · GDX · XLE · IEMG</p>
 
         <p style={{fontSize:13,color:"var(--text2)",lineHeight:1.7,marginBottom:20}}>
-          Necesitás una API key gratuita de <a href="https://www.alphavantage.co/support/#api-key" target="_blank">Alpha Vantage</a> para cotizaciones en tiempo real.
+          Necesitás una API key gratuita de <a href="https://twelvedata.com/apikey" target="_blank">Twelve Data</a> para cotizaciones en tiempo real. El plan gratuito tiene <strong style={{color:"var(--text)"}}>800 requests/día</strong> — más que suficiente.
         </p>
 
         <div style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:6,padding:"14px 16px",marginBottom:20}}>
-          <div style={{fontSize:12,fontWeight:600,color:"var(--text)",marginBottom:8}}>Cómo obtener la key (30 seg)</div>
-          {["Entrá a alphavantage.co → Support → API Key","Ponés nombre + email","Copiás la key que te mandan"].map((s,i)=>(
+          <div style={{fontSize:12,fontWeight:600,color:"var(--text)",marginBottom:8}}>Cómo obtener la key (1 minuto)</div>
+          {["Entrá a twelvedata.com y creá una cuenta gratuita","Verificás el email","En el dashboard copiás tu API key"].map((s,i)=>(
             <div key={i} style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:i<2?6:0}}>
               <div style={{minWidth:20,height:20,borderRadius:"50%",background:"var(--border2)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:600,color:"var(--text2)",marginTop:1}}>{i+1}</div>
               <span style={{fontSize:13,color:"var(--text2)"}}>{s}</span>
@@ -141,7 +146,7 @@ function SetupScreen({ onSave }) {
         </div>
 
         <label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--text2)",marginBottom:6,letterSpacing:.5}}>API KEY</label>
-        <input type="text" placeholder="Ej: ABCDEF123456XYZ" value={key}
+        <input type="text" placeholder="Ej: abc123def456..." value={key}
           onChange={e => setKey(e.target.value)}
           onKeyDown={e => e.key==="Enter" && key.trim() && onSave(key.trim())}
           style={{width:"100%",background:"var(--bg)",border:"1px solid var(--border2)",color:"var(--text)",padding:"10px 14px",fontSize:14,borderRadius:6,fontFamily:"var(--mono)",marginBottom:12}}
@@ -150,7 +155,7 @@ function SetupScreen({ onSave }) {
           style={{width:"100%",background:"var(--green)",border:"none",color:"#000",padding:"11px",fontSize:14,fontWeight:700,borderRadius:6,cursor:"pointer",letterSpacing:.3}}>
           Ingresar al Dashboard →
         </button>
-        <p style={{fontSize:11,color:"var(--text3)",marginTop:14,textAlign:"center"}}>La key se guarda en tu navegador. Plan gratuito: 25 consultas/día.</p>
+        <p style={{fontSize:11,color:"var(--text3)",marginTop:14,textAlign:"center"}}>La key se guarda en tu navegador. Plan gratuito: 800 req/día.</p>
       </div>
     </div>
   );
@@ -158,7 +163,7 @@ function SetupScreen({ onSave }) {
 
 // ─── MAIN ─────────────────────────────────────────────────────────────────────
 function App() {
-  const [apiKey,    setApiKey]    = useState(() => localStorage.getItem("av_key") || "");
+  const [apiKey,    setApiKey]    = useState(() => localStorage.getItem("td_key") || "");
   const [nominales, setNominales] = useState(() => { try { return JSON.parse(localStorage.getItem("nominales")||"{}"); } catch { return {}; }});
   const [prices,    setPrices]    = useState({});
   const [ccl,       setCcl]       = useState(null);
@@ -167,8 +172,10 @@ function App() {
   const [apiError,  setApiError]  = useState("");
   const [editing,   setEditing]   = useState(null);
   const [editVal,   setEditVal]   = useState("");
+  const [countdown, setCountdown] = useState(60);
+  const [flashedAt, setFlashedAt] = useState({});
 
-  const saveKey = k => { localStorage.setItem("av_key", k); setApiKey(k); };
+  const saveKey = k => { localStorage.setItem("td_key", k); setApiKey(k); };
 
   useEffect(() => { localStorage.setItem("nominales", JSON.stringify(nominales)); }, [nominales]);
 
@@ -178,19 +185,52 @@ function App() {
     const cclVal = await fetchDolarCCL();
     if (cclVal) setCcl(cclVal);
     const newPrices = {};
-    for (let i = 0; i < CARTERA.length; i++) {
-      if (i > 0) await new Promise(r => setTimeout(r, 300));
-      const r = await fetchPrice(CARTERA[i].ticker, apiKey);
-      if (r) newPrices[CARTERA[i].ticker] = r;
-      else   setApiError("Algunos precios no cargaron — límite Alpha Vantage: 25 req/día.");
+    try {
+      // Twelve Data soporta batch: todos los tickers en un solo request
+      const symbols = CARTERA.map(c => c.ticker).join(",");
+      const res  = await fetch(`https://api.twelvedata.com/quote?symbol=${symbols}&apikey=${apiKey}`);
+      const data = await res.json();
+      // Si es un solo ticker devuelve objeto, si son varios devuelve objeto de objetos
+      const isMulti = CARTERA.length > 1;
+      for (const { ticker } of CARTERA) {
+        const q = isMulti ? data[ticker] : data;
+        if (q && q.close && q.status !== "error") {
+          const price  = parseFloat(q.close);
+          const prev   = parseFloat(q.previous_close);
+          const change = ((price - prev) / prev) * 100;
+          newPrices[ticker] = { price, change };
+        }
+      }
+      if (Object.keys(newPrices).length === 0) {
+        setApiError("No se pudieron cargar precios. Verificá tu API key de Twelve Data.");
+      }
+    } catch (e) {
+      setApiError("Error al conectar con Twelve Data.");
     }
     setPrices(p => ({...p,...newPrices}));
+    // Flash updated tickers
+    const now = Date.now();
+    const flashed = {};
+    Object.keys(newPrices).forEach(t => { flashed[t] = now; });
+    setFlashedAt(flashed);
     setLastSync(new Date());
     setLoading(false);
   }, [apiKey]);
 
   useEffect(() => { if (apiKey) fetchAll(); }, [apiKey]);
-  useEffect(() => { const iv = setInterval(fetchAll, 120000); return ()=>clearInterval(iv); }, [fetchAll]);
+
+  // Auto-sync every 60s + countdown ticker
+  useEffect(() => {
+    setCountdown(60);
+    const syncIv = setInterval(() => {
+      fetchAll();
+      setCountdown(60);
+    }, 60000);
+    const tickIv = setInterval(() => {
+      setCountdown(c => c > 0 ? c - 1 : 60);
+    }, 1000);
+    return () => { clearInterval(syncIv); clearInterval(tickIv); };
+  }, [fetchAll]);
 
   if (!apiKey) return <SetupScreen onSave={saveKey} />;
 
@@ -234,15 +274,31 @@ function App() {
           <div style={{display:"flex",alignItems:"center",gap:12}}>
             {lastSync && (
               <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>
-                {lastSync.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}
+                último: {lastSync.toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
               </span>
             )}
+            {/* Countdown ring */}
+            <div style={{position:"relative",width:32,height:32,cursor:"pointer"}} onClick={fetchAll} title="Syncear ahora">
+              <svg width="32" height="32" style={{transform:"rotate(-90deg)"}}>
+                <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border2)" strokeWidth="2.5"/>
+                <circle cx="16" cy="16" r="12" fill="none"
+                  stroke={loading ? "var(--green)" : "var(--green)"}
+                  strokeWidth="2.5"
+                  strokeDasharray={`${2*Math.PI*12}`}
+                  strokeDashoffset={`${2*Math.PI*12*(1 - (loading ? 1 : (60-countdown)/60))}`}
+                  strokeLinecap="round"
+                  style={{transition:"stroke-dashoffset .9s linear"}}
+                />
+              </svg>
+              <span style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",fontSize:9,fontFamily:"var(--mono)",color:loading?"var(--green)":"var(--text2)",fontWeight:600}}>
+                {loading ? "↻" : countdown}
+              </span>
+            </div>
             <button onClick={fetchAll} disabled={loading}
-              style={{background:loading?"var(--bg3)":"var(--bg3)",border:"1px solid var(--border2)",color:loading?"var(--text3)":"var(--text2)",padding:"5px 14px",fontSize:12,fontWeight:500,borderRadius:5,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
-              <span style={{fontSize:14,display:"inline-block",animation:loading?"spin 1s linear infinite":"none"}}>↻</span>
-              {loading ? "Actualizando..." : "Actualizar"}
+              style={{background:"var(--bg3)",border:"1px solid var(--border2)",color:loading?"var(--text3)":"var(--text2)",padding:"5px 14px",fontSize:12,fontWeight:500,borderRadius:5,cursor:"pointer",display:"flex",alignItems:"center",gap:6}}>
+              {loading ? "Actualizando..." : "Sync ahora"}
             </button>
-            <button onClick={()=>{localStorage.removeItem("av_key");setApiKey("");}}
+            <button onClick={()=>{localStorage.removeItem("td_key");setApiKey("");}}
               title="Cambiar API Key"
               style={{background:"transparent",border:"1px solid var(--border)",color:"var(--text3)",padding:"5px 10px",fontSize:12,borderRadius:5,cursor:"pointer"}}>
               API Key
@@ -297,7 +353,7 @@ function App() {
             const sc     = SECTOR_COLOR[sector] || "var(--text2)";
 
             return (
-              <div key={ticker} className="ticker-row" style={{
+              <div key={ticker} className={"ticker-row" + (flashedAt[ticker] ? " flash" : "")} style={{
                 background:"var(--bg2)",
                 border:"1px solid var(--border)",
                 borderRadius:8,
@@ -419,8 +475,8 @@ function App() {
         )}
 
         <div style={{marginTop:28,paddingTop:16,borderTop:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <span style={{fontSize:11,color:"var(--text3)"}}>Precios: Alpha Vantage · CCL: DolarAPI · Ratios: Comafi · Solo referencial</span>
-          <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>AUTO-SYNC 2 min</span>
+          <span style={{fontSize:11,color:"var(--text3)"}}>Precios: Twelve Data · CCL: DolarAPI · Ratios: Comafi · Solo referencial</span>
+          <span style={{fontSize:11,color:"var(--text3)",fontFamily:"var(--mono)"}}>● AUTO-SYNC ACTIVO · cada 60s</span>
         </div>
       </div>
     </div>
